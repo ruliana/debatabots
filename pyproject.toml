@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "gpt-playground"
+version = "0.1.0"
+description = ""
+authors = ["Ronie Uliana <ronie.uliana@gmail.com>"]
+readme = "README.md"
+packages = [{include = "gpt_playground"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+openai = "^0.27.7"
+tiktoken = "^0.4.0"
+chromadb = "^0.3.25"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
