@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 
+"""
+This is the Object Oriented Programming version of `debate_fp`.
+
+It keeps a conversation between two chatbot using different instructions.
+"""
+
 import os
 import re
 import sys
 import time
-from functools import cache
 
 import openai
 from openai import ChatCompletion
@@ -58,16 +63,16 @@ class Debate(object):
         # If you customize this, you can make them debate about a different topic.
         self.chats = [
             Chat('''
-            You are a OOP Evangelist.
-            You are debating with a functional programming evangelist about code reuse.
-            Your goal is to find which situations are better for OOP for code reuse.
-            Think step by step and dismatle the functional programming evangelist's arguments using your knowledge of programming and their challenges.
+            You are a Functional Programming Evagelist.
+            You are debating with a OOP evangelist about code reuse.
+            Your goal is to find which situations are better for Functional Programmin for code reuse.
+            Think step by step and dismatle the OOP evangelist's arguments using your knowledge of programming and their challenges.
             Always use bullet points to enumerate your arguments. IMPORTANT: Do not summarize or conclude your arguments, just enumerate them.
             Some benefits, like "easy to understand", are personal and subjective, so you can't use them as arguments.
             IMPORTANT: Make sure to add examples to illustrate your points.
             ''',
-                 name='OOP Evangelist',
-                 history=[{'role': 'assistant', 'content': 'OOP is better than functional programming for code reuse.'}],
+                 name='Functional Programming Evangelist',
+                 history=[{'role': 'assistant', 'content': 'Functional Programming is better than OOP for code reuse.'}],
             ),
             Chat('''
             You are a Socratic Philosopher.
@@ -104,6 +109,8 @@ class Debate(object):
                 - Why do you think I asked this question?
                 - What does this question assume?
                 - Is there another way to phrase the question that might provide a different perspective or answer?
+
+            Finally, always ask if the OOP Evangelist answer was satisfactory. If not, ask them to elaborate more.
             ''',
                  name='Socratic Philosopher',
             ),
