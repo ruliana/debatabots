@@ -15,6 +15,7 @@ from typing import NamedTuple
 
 import openai
 from openai import ChatCompletion
+from openai.error import RateLimitError
 openai.api_key = os.environ['OPENAI_API_KEY']
 
 Message = dict[str, str]
@@ -30,6 +31,23 @@ def create_message(role: str, message: str) -> Message:
 def add_message(bot: Bot, message: Message) -> Bot:
     name, chat = bot
     return Bot(name=name, chat=chat + [message])
+
+def with_retries(func, retries=3, sleep_time=10):
+    """
+    Encapsulates a function call in a retry loop.
+
+    Only retries if the function raises an ``openai.RateLimitError``.
+    Returns a function that can be called with the same arguments as the original function.
+    """
+    def wrapper(*args, **kwargs):
+        for i in range(retries):
+            try:
+                return func(*args, **kwargs)
+            except RateLimitError as e:
+                print(f'Rate limit exceeded. Waiting {sleep_time} seconds before retrying.', file=sys.stderr)
+                time.sleep(sleep_time)
+        raise e
+    return wrapper
 
 def get_response(bot: Bot) -> str:
     response = ChatCompletion.create(
@@ -54,12 +72,25 @@ def turn(debate: Debate) -> Debate:
     )
     answerer_with_answer = pipe(
         answerer_with_question,
-        get_response,
+        with_retries(get_response),
         create_message('assistant'),
         add_message(answerer_with_question),
     )
 
     return (answerer_with_answer, questioner)
+
+def summarize_debate(chat: Chat) -> str:
+    prompt = '''
+    Summarize the debate. Make sure to include the following points:
+    - The most important arguments.
+    - The most convincing arguments.
+    - Main takeaways.
+    '''
+    chat_no_system = list(filter(lambda message: message['role'] != 'system', chat))
+    chat_with_summrizer =   chat_no_system + [create_message('system', prompt)]
+    summarizer = Bot(name='Scribe', chat=chat_with_summrizer)
+    response = with_retries(get_response)(summarizer)
+    return f'=== Summary ===\n{response}'
 
 def print_turn(bot: Bot, turn_number: int) -> None:
     print()
@@ -74,6 +105,10 @@ def run_debate(debate: Debate, debate_length: int) -> None:
     for i in range(debate_length - 1):
         print_turn(questioner, i + 1)
 
+        # Find if the last message say "no more questions"
+        if re.search(r'no more questions|goodbye', get_last_text(questioner), re.IGNORECASE):
+            break
+
         # Go for the next turn, unless we already have the next message
         if len(answerer.chat) > i + 1:
             questioner, answerer = answerer, questioner
@@ -82,6 +117,7 @@ def run_debate(debate: Debate, debate_length: int) -> None:
             questioner, answerer = turn((answerer, questioner))
 
     print_turn(questioner, i + 2)
+    print(summarize_debate(answerer.chat))
 
 provoker = [
     create_message('system', '''
@@ -89,20 +125,18 @@ provoker = [
     You are debating with a OOP evangelist about code reuse.
     Always use bullet points to enumerate your arguments. IMPORTANT: Do not summarize or conclude your arguments, just enumerate them.
     Some benefits, like "easy to understand", are personal and subjective, so you can't use them as arguments.
-    IMPORTANT: Make sure to add examples to illustrate your points.
+    IMPORTANT: Make sure to add examples in Javascript to illustrate your points.
     '''),
     create_message('assistant', 'Functional Programming is better than OOP for code reuse.'),
     create_message('user', 'Can you elaborate on what you mean by "better"?'),
     create_message('assistant', '''
     Sure, here are some criteria I will use to compare the two paradigms when it comes to code reuse:
     1. Immutability
-    2. Higher-Order Functions
-    3. Composition
-    4. Purity
+    2. Purity
+    3. Higher-Order Functions
+    4. Composition
     5. Separation of Concerns
     6. Modularity
-    7. Domain-Specific Languages
-    8. Type Inference
     Let's go through each of these points in turn and compare how functional programming is better suited for code reuse than OOP.
     '''),
 ]
@@ -144,7 +178,9 @@ contender = [
         - What does this question assume?
         - Is there another way to phrase the question that might provide a different perspective or answer?
 
+    IMPORTANT:
     Never agree with the other person, even if they are right. Instead, ask them to elaborate on their point of view.
+    When you have no more questions, just say "I have no more questions".
     '''),
     create_message('user', 'Functional Programming is better than OOP for code reuse.'),
     create_message('assistant', 'Can you elaborate on what you mean by "better"?'),
@@ -156,5 +192,5 @@ if __name__ == '__main__':
             Bot('Socratic Philosopher', contender),
             Bot('Functional Programming Evangelist', provoker)
         ),
-        10
+        30
     )
