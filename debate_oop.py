@@ -16,10 +16,20 @@ from openai import ChatCompletion
 openai.api_key = os.environ['OPENAI_API_KEY']
 
 
+class Responder(object):
+    def get_response(self, chat):
+        response = ChatCompletion.create(
+            model='gpt-3.5-turbo',
+            temperature=0.9,
+            messages=chat,
+        )
+        return response.choices[0].message.content
+
+
 class Chat(object):
     """Tiny wrapper around OpenAI Chat API"""
 
-    def __init__(self, system_message, name=None, history=[]):
+    def __init__(self, system_message, name=None, history=[], responder=Responder()):
         """Create a new chat session.
 
         system_message: The prompt directive for the chat bot
@@ -31,15 +41,22 @@ class Chat(object):
             {'role': 'system', 'content': re.sub('\s+', ' ', self.system_message)},
         ]
         self.history.extend(history)
+        self.responder = responder
+
+    def get_response_with_retries(self, message, retries=3, sleep_time=10):
+        """Get a response from the chat bot, but retries if the API rate limit is exceeded."""
+        for _ in range(retries):
+            try:
+                return self.get_response(message)
+            except openai.error.RateLimitError:
+                print(f'Rate limit exceeded. Waiting {10} seconds before retrying.', file=sys.stderr)
+                time.sleep(sleep_time)
+        raise e
 
     def get_response(self, message):
         """Get a response from the chat bot and update the chat history."""
         self.history.append({'role': 'user', 'content': message})
-        response = ChatCompletion.create(
-            model='gpt-3.5-turbo',
-            temperature=0.9,
-            messages=self.history,
-        )
+        response = self.responder.get_response(self.history)
         answer = response.choices[0].message.content
         self.history.append({'role': 'assistant', 'content': answer})
         return answer
@@ -63,20 +80,19 @@ class Debate(object):
         # If you customize this, you can make them debate about a different topic.
         self.chats = [
             Chat('''
-            You are a Functional Programming Evagelist.
-            You are debating with a OOP evangelist about code reuse.
-            Your goal is to find which situations are better for Functional Programmin for code reuse.
-            Think step by step and dismatle the OOP evangelist's arguments using your knowledge of programming and their challenges.
-            Always use bullet points to enumerate your arguments. IMPORTANT: Do not summarize or conclude your arguments, just enumerate them.
+            You are a Object Oriented Programming Evangelist.
+            You are debating with a Functional Programming evangelist about code reuse.
+            Always use bullet points to enumerate your arguments.
             Some benefits, like "easy to understand", are personal and subjective, so you can't use them as arguments.
-            IMPORTANT: Make sure to add examples to illustrate your points.
+            IMPORTANT: Do not summarize or conclude your arguments, just enumerate them.
+            IMPORTANT: Make sure to add examples in Javascript to illustrate your points.
             ''',
-                 name='Functional Programming Evangelist',
-                 history=[{'role': 'assistant', 'content': 'Functional Programming is better than OOP for code reuse.'}],
+                 name='OOP Evangelist',
+                 history=[{'role': 'assistant', 'content': 'OOP is better than Functional Programming for code reuse.'}],
             ),
             Chat('''
             You are a Socratic Philosopher.
-            You are debating with a OOP Evangelist about code reuse and your goal is to estimulate their critical thinking by questioning their beliefs.
+            You are debating about code reuse and your goal is to estimulate your oponent critical thinking by questioning their beliefs.
             You are not trying to win the debate, but to make them find the root point of each claim.
             Use the Socratic Questioning to do this. You can use the following questions:
 
@@ -109,8 +125,6 @@ class Debate(object):
                 - Why do you think I asked this question?
                 - What does this question assume?
                 - Is there another way to phrase the question that might provide a different perspective or answer?
-
-            Finally, always ask if the OOP Evangelist answer was satisfactory. If not, ask them to elaborate more.
             ''',
                  name='Socratic Philosopher',
             ),
@@ -142,10 +156,7 @@ class Debate(object):
 
         # Check if the debate is over
         # Yes, in every instance of the debate, it ended with them thanking each other.
-        if re.search(r'\b(thank you|you\'re welcome|great day|i completely agree)\b', last_message, re.IGNORECASE):
-            self.thank_you_count -= 1
-
-        if self.thank_you_count == 0:
+        if re.search(r'\b(you\'re welcome|great day|i completely agree|goodbye)\b', last_message, re.IGNORECASE):
             self.end_debate()
             sys.exit(0)
 
@@ -155,7 +166,10 @@ class Debate(object):
         """End the debate with a summary of the discussion."""
         print(f'=== End of debate! ===')
         print(self.current_chat().get_response('''
-        The debate is over. Let's summarize the discussion. Highlight the takeaways of the debate and the points that were not addressed.
+        Summarize the debate. Make sure to include the following points:
+        - The most important argument.
+        - The most convincing argument.
+        - The main takeaway.
         '''))
         sys.exit(0)
 
@@ -170,7 +184,6 @@ class Debate(object):
             print()
             print(f'=== Turn {turn + 1:02} ===')
             self.turn()
-            time.sleep(3)
 
         self.end_debate()
 

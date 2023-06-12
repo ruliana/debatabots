@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-This is the Functional Prgrammin version of `debate_oop`.
+This is the Functional Programming version of `debate_oop`.
 
 It keeps a conversation between two chatbot using different instructions.
 """
@@ -21,7 +21,6 @@ openai.api_key = os.environ['OPENAI_API_KEY']
 Message = dict[str, str]
 Chat = list[Message]
 Bot = NamedTuple('Bot', [('name', str), ('chat', Chat)])
-Debate = tuple[Bot, Bot]
 
 @curry
 def create_message(role: str, message: str) -> Message:
@@ -40,13 +39,15 @@ def with_retries(func, retries=3, sleep_time=10):
     Returns a function that can be called with the same arguments as the original function.
     """
     def wrapper(*args, **kwargs):
-        for i in range(retries):
+        last_exception = None
+        for _ in range(retries):
             try:
                 return func(*args, **kwargs)
             except RateLimitError as e:
+                last_exception = e
                 print(f'Rate limit exceeded. Waiting {sleep_time} seconds before retrying.', file=sys.stderr)
                 time.sleep(sleep_time)
-        raise e
+        raise last_exception
     return wrapper
 
 def get_response(bot: Bot) -> str:
@@ -62,8 +63,7 @@ def get_last_text(bot: Bot) -> str:
         throw('No message in history')
     return bot.chat[-1]['content']
 
-def turn(debate: Debate) -> Debate:
-    answerer, questioner = debate
+def turn(answerer: Bot, questioner: Bot) -> tuple[Bot, Bot]:
     answerer_with_question = pipe(
         questioner,
         get_last_text,
@@ -82,15 +82,15 @@ def turn(debate: Debate) -> Debate:
 def summarize_debate(chat: Chat) -> str:
     prompt = '''
     Summarize the debate. Make sure to include the following points:
-    - The most important arguments.
-    - The most convincing arguments.
-    - Main takeaways.
+    - The most important argument.
+    - The most convincing argument.
+    - The main takeaway.
     '''
     chat_no_system = list(filter(lambda message: message['role'] != 'system', chat))
-    chat_with_summrizer =   chat_no_system + [create_message('system', prompt)]
+    chat_with_summrizer = chat_no_system + [create_message('system', prompt)]
     summarizer = Bot(name='Scribe', chat=chat_with_summrizer)
     response = with_retries(get_response)(summarizer)
-    return f'=== Summary ===\n{response}'
+    return f'=== End of debate! ===\n{response}'
 
 def print_turn(bot: Bot, turn_number: int) -> None:
     print()
@@ -99,14 +99,12 @@ def print_turn(bot: Bot, turn_number: int) -> None:
     print(bot.chat[turn_number]['content'])
     sys.stdout.flush()
 
-def run_debate(debate: Debate, debate_length: int) -> None:
-    answerer, questioner = debate
-
+def run_debate(answerer: Bot, questioner: Bot, debate_length: int) -> None:
     for i in range(debate_length - 1):
         print_turn(questioner, i + 1)
 
         # Find if the last message say "no more questions"
-        if re.search(r'no more questions|goodbye', get_last_text(questioner), re.IGNORECASE):
+        if re.search(r'\b(you\'re welcome|great day|i completely agree|goodbye)\b', get_last_text(questioner), re.IGNORECASE):
             break
 
         # Go for the next turn, unless we already have the next message
@@ -114,7 +112,7 @@ def run_debate(debate: Debate, debate_length: int) -> None:
             questioner, answerer = answerer, questioner
         else:
             # Invert the roles of the debaters at each turn
-            questioner, answerer = turn((answerer, questioner))
+            questioner, answerer = turn(answerer, questioner)
 
     print_turn(questioner, i + 2)
     print(summarize_debate(answerer.chat))
@@ -123,8 +121,9 @@ provoker = [
     create_message('system', '''
     You are a Functional Programming Evangelist.
     You are debating with a OOP evangelist about code reuse.
-    Always use bullet points to enumerate your arguments. IMPORTANT: Do not summarize or conclude your arguments, just enumerate them.
+    Always use bullet points to enumerate your arguments.
     Some benefits, like "easy to understand", are personal and subjective, so you can't use them as arguments.
+    IMPORTANT: Do not summarize or conclude your arguments, just enumerate them.
     IMPORTANT: Make sure to add examples in Javascript to illustrate your points.
     '''),
     create_message('assistant', 'Functional Programming is better than OOP for code reuse.'),
@@ -144,7 +143,7 @@ provoker = [
 contender = [
     create_message('system', '''
     You are a Socratic Philosopher.
-    You are debating with a OOP Evangelist about code reuse and your goal is to estimulate their critical thinking by questioning their beliefs.
+    You are debating about code reuse and your goal is to estimulate your oponent critical thinking by questioning their beliefs.
     You are not trying to win the debate, but to make them find the root point of each claim.
     Use the Socratic Questioning to do this. You can use the following questions:
 
@@ -177,10 +176,6 @@ contender = [
         - Why do you think I asked this question?
         - What does this question assume?
         - Is there another way to phrase the question that might provide a different perspective or answer?
-
-    IMPORTANT:
-    Never agree with the other person, even if they are right. Instead, ask them to elaborate on their point of view.
-    When you have no more questions, just say "I have no more questions".
     '''),
     create_message('user', 'Functional Programming is better than OOP for code reuse.'),
     create_message('assistant', 'Can you elaborate on what you mean by "better"?'),

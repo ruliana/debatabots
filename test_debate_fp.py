@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from debate_fp import *
+import pytest
 from pytest_mock import mocker
 
 
@@ -33,11 +34,27 @@ def test_turn(mocker):
         'debate_fp.get_response',
         return_value='Hey there!'
     )
-    debate = (
-        Bot(name='Joe', chat=[]),
-        Bot(name='Zoe', chat=[{'role': 'assistant', 'content': 'Hello!'}])
-    )
-    assert turn(debate) == (
+
+    answerer = Bot(name='Joe', chat=[])
+    questioner = Bot(name='Zoe', chat=[{'role': 'assistant', 'content': 'Hello!'}])
+
+    assert turn(answerer, questioner) == (
         Bot(name='Joe', chat=[{'role': 'user', 'content': 'Hello!'}, {'role': 'assistant', 'content': 'Hey there!'}]),
         Bot(name='Zoe', chat=[{'role': 'assistant', 'content': 'Hello!'}])
     )
+
+def test_with_retries_success(mocker):
+    mock = mocker.Mock()
+    mock.side_effect = [RateLimitError, RateLimitError, 'success']
+    wrapped = with_retries(mock, retries=3, sleep_time=0)
+
+    assert wrapped() == 'success'
+    assert mock.call_count == 3
+
+def test_with_retries_failure(mocker):
+    mock = mocker.Mock()
+    mock.side_effect = [RateLimitError, RateLimitError, RateLimitError]
+    wrapped = with_retries(mock, retries=3, sleep_time=0)
+
+    with pytest.raises(RateLimitError):
+        wrapped()
