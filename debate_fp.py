@@ -100,21 +100,23 @@ def print_turn(bot: Bot, turn_number: int) -> None:
     sys.stdout.flush()
 
 def run_debate(answerer: Bot, questioner: Bot, debate_length: int) -> None:
-    for i in range(debate_length - 1):
-        print_turn(questioner, i + 1)
-
+    # We start from 1 to skip the initial system message
+    # and to have turns starting at 1 instead of 0.
+    for i in range(1, debate_length + 1):
         # Find if the last message say "no more questions"
         if re.search(r'\b(you\'re welcome|great day|i completely agree|goodbye)\b', get_last_text(questioner), re.IGNORECASE):
             break
 
+        print_turn(questioner, i)
+
         # Go for the next turn, unless we already have the next message
-        if len(answerer.chat) > i + 1:
+        if len(answerer.chat) > i:
             questioner, answerer = answerer, questioner
         else:
             # Invert the roles of the debaters at each turn
             questioner, answerer = turn(answerer, questioner)
 
-    print_turn(questioner, i + 2)
+    print_turn(questioner, i)
     print(summarize_debate(answerer.chat))
 
 provoker = [
@@ -183,9 +185,7 @@ contender = [
 
 if __name__ == '__main__':
     run_debate(
-        (
-            Bot('Socratic Philosopher', contender),
-            Bot('Functional Programming Evangelist', provoker)
-        ),
+        Bot('Socratic Philosopher', contender),
+        Bot('Functional Programming Evangelist', provoker),
         30
     )
