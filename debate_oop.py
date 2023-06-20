@@ -57,9 +57,8 @@ class Chat(object):
         """Get a response from the chat bot and update the chat history."""
         self.history.append({'role': 'user', 'content': message})
         response = self.responder.get_response(self.history)
-        answer = response.choices[0].message.content
-        self.history.append({'role': 'assistant', 'content': answer})
-        return answer
+        self.history.append({'role': 'assistant', 'content': response})
+        return response
 
     def last_message(self):
         """Get the last message in the chat history or throw an error if there is no message."""
@@ -138,6 +137,7 @@ class Debate(object):
         This is used to show the current state of the debate.
         """
         print(f'{self.current_chat().name}:\n{self.current_chat().last_message()}')
+        sys.stdout.flush()
 
     def current_chat(self):
         return self.chats[self.chat_index]
@@ -151,7 +151,7 @@ class Debate(object):
 
         argument = self.current_chat().last_message()
         self.next_chat()
-        self.current_chat().get_response(argument)
+        self.current_chat().get_response_with_retries(argument)
         last_message = self.current_chat().last_message()
 
         # Check if the debate is over
@@ -165,7 +165,7 @@ class Debate(object):
     def end_debate(self):
         """End the debate with a summary of the discussion."""
         print(f'=== End of debate! ===')
-        print(self.current_chat().get_response('''
+        print(self.current_chat().get_response_with_retries('''
         Summarize the debate. Make sure to include the following points:
         - The most important argument.
         - The most convincing argument.

@@ -18,16 +18,24 @@ from openai import ChatCompletion
 from openai.error import RateLimitError
 openai.api_key = os.environ['OPENAI_API_KEY']
 
+MODEL = 'gpt-3.5-turbo'
+
 Message = dict[str, str]
 Chat = list[Message]
 Bot = NamedTuple('Bot', [('name', str), ('chat', Chat)])
 
 @curry
 def create_message(role: str, message: str) -> Message:
+    """
+    Create a message stripped of extra spaces.
+    """
     return {'role': role, 'content': re.sub(r' +', ' ', message)}
 
 @curry
 def add_message(bot: Bot, message: Message) -> Bot:
+    """
+    Add a message to a bot's chat history.
+    """
     name, chat = bot
     return Bot(name=name, chat=chat + [message])
 
@@ -51,19 +59,28 @@ def with_retries(func, retries=3, sleep_time=10):
     return wrapper
 
 def get_response(bot: Bot) -> str:
+    """
+    Ask the GPT-3 model to generate a response to the chat history of a bot.
+    """
     response = ChatCompletion.create(
-        model='gpt-3.5-turbo',
+        model=MODEL,
         temperature=0.9,
         messages=bot.chat,
     )
     return response.choices[0].message.content
 
 def get_last_text(bot: Bot) -> str:
+    """
+    Get the text of the last message in a bot's chat history.
+    """
     if len(bot.chat) == 0:
         throw('No message in history')
     return bot.chat[-1]['content']
 
 def turn(answerer: Bot, questioner: Bot) -> tuple[Bot, Bot]:
+    """
+    Run a turn of the debate between the bots.
+    """
     answerer_with_question = pipe(
         questioner,
         get_last_text,
@@ -80,6 +97,9 @@ def turn(answerer: Bot, questioner: Bot) -> tuple[Bot, Bot]:
     return (answerer_with_answer, questioner)
 
 def summarize_debate(chat: Chat) -> str:
+    """
+    Summarize the debate by asking GPT to write a conclusion.
+    """
     prompt = '''
     Summarize the debate. Make sure to include the following points:
     - The most important argument.
@@ -93,6 +113,9 @@ def summarize_debate(chat: Chat) -> str:
     return f'=== End of debate! ===\n{response}'
 
 def print_turn(bot: Bot, turn_number: int) -> None:
+    """
+    Print the chat of a given turn for a bot.
+    """
     print()
     print(f'## Turn {turn_number}')
     print(f'{bot.name}:')
@@ -100,26 +123,29 @@ def print_turn(bot: Bot, turn_number: int) -> None:
     sys.stdout.flush()
 
 def run_debate(answerer: Bot, questioner: Bot, debate_length: int) -> None:
+    """
+    Run a debate between two bots for a given number of turns or until they reach a conclusion.
+    """
     # We start from 1 to skip the initial system message
     # and to have turns starting at 1 instead of 0.
     for i in range(1, debate_length + 1):
-        # Find if the last message say "no more questions"
+        # Find if the bots have already reached a conclusion
         if re.search(r'\b(you\'re welcome|great day|i completely agree|goodbye)\b', get_last_text(questioner), re.IGNORECASE):
             break
 
         print_turn(questioner, i)
 
-        # Go for the next turn, unless we already have the next message
+        # Invert the roles of the debaters at each turn
+        # Just switch the bots if the chat history has messages up to the current turn
         if len(answerer.chat) > i:
             questioner, answerer = answerer, questioner
         else:
-            # Invert the roles of the debaters at each turn
             questioner, answerer = turn(answerer, questioner)
 
     print_turn(questioner, i)
     print(summarize_debate(answerer.chat))
 
-provoker = [
+provoker = Bot('Functional Programming Evangelist', [
     create_message('system', '''
     You are a Functional Programming Evangelist.
     You are debating with a OOP evangelist about code reuse.
@@ -140,9 +166,9 @@ provoker = [
     6. Modularity
     Let's go through each of these points in turn and compare how functional programming is better suited for code reuse than OOP.
     '''),
-]
+])
 
-contender = [
+contender = Bot('Socratic Philosopher', [
     create_message('system', '''
     You are a Socratic Philosopher.
     You are debating about code reuse and your goal is to estimulate your oponent critical thinking by questioning their beliefs.
@@ -181,11 +207,7 @@ contender = [
     '''),
     create_message('user', 'Functional Programming is better than OOP for code reuse.'),
     create_message('assistant', 'Can you elaborate on what you mean by "better"?'),
-]
+])
 
 if __name__ == '__main__':
-    run_debate(
-        Bot('Socratic Philosopher', contender),
-        Bot('Functional Programming Evangelist', provoker),
-        30
-    )
+    run_debate(contender, provoker, 30)
