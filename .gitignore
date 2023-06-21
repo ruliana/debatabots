@@ -1,3 +1,7 @@
 .env
 __pycache__
 *.pyc
+
+# Ignore everything inside the `cache` dir except `README.md`
+cache/*
+!cache/README.org

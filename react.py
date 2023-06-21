@@ -6,10 +6,13 @@ import openai
 import requests
 import sys
 
+from joblib import Memory
 from pprint import pprint
 from html2text import html2text
 
 from lib.chat import *
+
+memory = Memory('cache', verbose=0)
 
 
 def debug_display(stuff: Any) -> None:
@@ -32,6 +35,7 @@ def ask_assistant(bot: Bot) -> Bot:
             response = content
 
 
+@memory.cache
 def ask_google(query: str) -> str:
     response = requests.get(
         "https://www.googleapis.com/customsearch/v1",
@@ -54,8 +58,11 @@ def ask_google(query: str) -> str:
     return json.dumps(entries_of_interest)
 
 
+@memory.cache
 def scrap_web_page(url: str) -> str:
     html = requests.get(url).text
+    print(html2text(html))
+    sys.exit(1)
     return html2text(html)
 
 

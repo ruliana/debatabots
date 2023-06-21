@@ -17,7 +17,7 @@ from openai import ChatCompletion
 openai.api_key = os.environ['OPENAI_API_KEY']
 
 MODEL = 'gpt-3.5-turbo-0613'
-TEMPERATURE = 0.9
+TEMPERATURE = 0.0
 
 Message = dict[str, str]
 FunctionDescription = dict[str, Any]
@@ -103,11 +103,13 @@ def get_response(bot: Bot) -> str:
 
 def create_react_responder(functions: dict[str, Any]) -> Callable[[Bot], dict[str, str]]:
     """
-    ReACT responder function factory.
+    ReAct responder function factory.
 
-    ReACT is a technique for LLMs to use knowledge beyound their training cuttof.
+    ReAct is a technique for LLMs to use knowledge beyound their training cuttof.
     See https://arxiv.org/abs/2106.05237 for more details.
     See https://www.promptingguide.ai/techniques/react for a straightforward explanation.
+
+    The new ``functions`` parameter in the GPT API does most of the work for us.
 
     Parameters
     ----------

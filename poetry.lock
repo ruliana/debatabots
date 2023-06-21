@@ -857,6 +857,17 @@ files = [
 ]
 
 [[package]]
+name = "joblib"
+version = "1.2.0"
+description = "Lightweight pipelining with Python functions"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "joblib-1.2.0-py3-none-any.whl", hash = "sha256:091138ed78f800342968c523bdde947e7a305b8594b910a0fea2ab83c3c6d385"},
+    {file = "joblib-1.2.0.tar.gz", hash = "sha256:e1cee4a79e4af22881164f218d4311f60074197fb707e082e803b61f6d137018"},
+]
+
+[[package]]
 name = "lz4"
 version = "4.3.2"
 description = "LZ4 Bindings for Python"
@@ -2273,4 +2284,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "db2128857186b8d3dd4343240cd722bf655cf1bafcde73300ec272deeec4975c"
+content-hash = "e3457599b3f37ad86756c76ad88779e66610cfbb2b75e6e75ec2f58d30de2a61"
