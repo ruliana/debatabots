@@ -8,7 +8,7 @@ import os
 import re
 import time
 import sys
-from toolz import curry, pipe
+from toolz import curry
 from typing import Any, NamedTuple
 from collections.abc import Callable
 

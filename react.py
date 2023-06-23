@@ -15,6 +15,8 @@ import chromadb
 from lib.chat import *
 from lib.markdown_splitter import markdown_splitter
 
+MIN_CHUNK_SIZE = 300
+
 memory = Memory('cache', verbose=0)
 
 # Let's simplify it for now. Just one collection, no persistence.
@@ -89,7 +91,7 @@ def load_page_to_chromadb(url: str, page: str) -> None:
     chunks = {
         generate_id(chunk): chunk
         for chunk in chunks
-        if len(chunk) >= 100
+        if len(chunk) >= MIN_CHUNK_SIZE
     }
 
     for id, chunk in chunks.items():
@@ -106,14 +108,11 @@ def load_page_to_chromadb(url: str, page: str) -> None:
 def query_storage(url: str, query: str) -> str:
     result = storage.query(
         query_texts=[query],
-        n_results=3,
+        n_results=5,
         where={'url': url},
     )
     docs = result['documents'][0]
-    rslt = docs and '\n'.join(docs)
-    print('=' * 80)
-    debug_display(rslt)
-    return rslt
+    return docs and '\n'.join(docs)
 
 def create_responder_parser(responder: Callable[[Bot], dict[str, str]]) -> Callable[[Bot], dict[str, str]]:
     def wrapper(bot: Bot) -> dict[str, str]:
@@ -168,15 +167,17 @@ responder = create_react_responder(functions)
 responder = create_responder_parser(responder)
 responder = with_retries(responder, exception_class=ValueError)
 responder = with_retries(responder, exception_class=openai.error.RateLimitError, sleep_time=10)
+responder = with_retries(responder, exception_class=openai.error.ServiceUnavailableError, sleep_time=10)
 
 # Main
 bot = Bot(
     name='Assistant',
     chat=[
+        system_message('Always try to confirm your answer with secondary resources, i.e. scrap more than one web page. Give url references to the user.'),
         # user_message('What was the score in the latest Lakers game?'),
-        # user_message('How was the weather in Berlin last yesterday?'),
+        user_message('How was the weather in Berlin last yesterday?'),
         # user_message('What can you tell me about Kosar Jaff who works at Shopify?')
-        user_message('What are the most recent prompt engineering techniques from 2022 and onwards?')
+        # user_message('What are the most recent prompt engineering techniques from 2022 and onwards?')
     ],
 )
 try:
