@@ -175,8 +175,8 @@ bot = Bot(
     chat=[
         system_message('Always try to confirm your answer with secondary resources, i.e. scrap more than one web page. Give url references to the user.'),
         # user_message('What was the score in the latest Lakers game?'),
-        user_message('How was the weather in Berlin last yesterday?'),
-        # user_message('What can you tell me about Kosar Jaff who works at Shopify?')
+        # user_message('How was the weather in Berlin last yesterday?'),
+        user_message('What can you tell me about Kosar Jaff who works at Shopify?')
         # user_message('What are the most recent prompt engineering techniques from 2022 and onwards?')
     ],
 )

@@ -116,8 +116,7 @@ def print_turn(bot: Bot, turn_number: int) -> None:
     """
     Print the chat of a given turn for a bot.
     """
-    print()
-    print(f'## Turn {turn_number}')
+    print(f'\n\n## Turn {turn_number}')
     print(f'{bot.name}:')
     print(bot.chat[turn_number]['content'])
     sys.stdout.flush()
@@ -145,28 +144,42 @@ def run_debate(answerer: Bot, questioner: Bot, debate_length: int) -> None:
     print_turn(questioner, i)
     print(summarize_debate(answerer.chat))
 
-provoker = Bot('Functional Programming Evangelist', [
+provoker = Bot('Flat-earth believer', [
     create_message('system', '''
-    You are a Functional Programming Evangelist.
-    You are debating with a OOP evangelist about code reuse.
+    You are a flat-earth believer.
+    You are debating with a scientist about the shape of the earth.
     Always use bullet points to enumerate your arguments.
     Some benefits, like "easy to understand", are personal and subjective, so you can't use them as arguments.
     IMPORTANT: Do not summarize or conclude your arguments, just enumerate them.
-    IMPORTANT: Make sure to add examples in Javascript to illustrate your points.
+    IMPORTANT: Make sure to mention the source of your beliefs.
     '''),
-    create_message('assistant', 'Functional Programming is better than OOP for code reuse.'),
-    create_message('user', 'Can you elaborate on what you mean by "better"?'),
-    create_message('assistant', '''
-    Sure, here are some criteria I will use to compare the two paradigms when it comes to code reuse:
-    1. Immutability
-    2. Purity
-    3. Higher-Order Functions
-    4. Composition
-    5. Separation of Concerns
-    6. Modularity
-    Let's go through each of these points in turn and compare how functional programming is better suited for code reuse than OOP.
-    '''),
+    create_message('assistant', 'The Earth is flat.'),
+    # create_message('user', 'Can you elaborate on what you mean by "flat"?'),
 ])
+
+
+# provoker = Bot('Functional Programming Evangelist', [
+#     create_message('system', '''
+#     You are a Functional Programming Evangelist.
+#     You are debating with a OOP evangelist about code reuse.
+#     Always use bullet points to enumerate your arguments.
+#     Some benefits, like "easy to understand", are personal and subjective, so you can't use them as arguments.
+#     IMPORTANT: Do not summarize or conclude your arguments, just enumerate them.
+#     IMPORTANT: Make sure to add examples in Javascript to illustrate your points.
+#     '''),
+#     create_message('assistant', 'Functional Programming is better than OOP for code reuse.'),
+#     create_message('user', 'Can you elaborate on what you mean by "better"?'),
+#     create_message('assistant', '''
+#     Sure, here are some criteria I will use to compare the two paradigms when it comes to code reuse:
+#     1. Immutability
+#     2. Purity
+#     3. Higher-Order Functions
+#     4. Composition
+#     5. Separation of Concerns
+#     6. Modularity
+#     Let's go through each of these points in turn and compare how functional programming is better suited for code reuse than OOP.
+#     '''),
+# ])
 
 contender = Bot('Socratic Philosopher', [
     create_message('system', '''
@@ -205,8 +218,10 @@ contender = Bot('Socratic Philosopher', [
         - What does this question assume?
         - Is there another way to phrase the question that might provide a different perspective or answer?
     '''),
-    create_message('user', 'Functional Programming is better than OOP for code reuse.'),
-    create_message('assistant', 'Can you elaborate on what you mean by "better"?'),
+    # create_message('user', 'Functional Programming is better than OOP for code reuse.'),
+    # create_message('assistant', 'Can you elaborate on what you mean by "better"?'),
+    create_message('user', 'The Earth is flat.'),
+    create_message('assistant', 'Can you elaborate on what you mean by "flat"?'),
 ])
 
 if __name__ == '__main__':
